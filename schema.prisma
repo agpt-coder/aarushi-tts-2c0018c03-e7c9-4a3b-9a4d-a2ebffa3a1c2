@@ -1,0 +1,121 @@
+// datasource db defines the database connection settings.
+// It is configured for PostgreSQL and uses an environment variable for the connection URL.
+// The 'extensions' feature enables the use of PostgreSQL-specific data types.
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+}
+
+// generator db configures Prisma Client settings.
+// It is set up to use Prisma Client Python with asyncio interface and specific features.
+generator db {
+  provider             = "prisma-client-py"
+  interface            = "asyncio"
+  recursive_type_depth = 5
+  previewFeatures      = ["postgresqlExtensions"]
+}
+
+model User {
+  id             String   @id @default(uuid())
+  username       String   @unique
+  email          String   @unique
+  hashedPassword String
+  role           UserRole
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  SpeechRequests UserSpeechRequest[]
+  ApiKeys        ApiKey[]
+  Subscriptions  Subscription[]
+}
+
+model ApiKey {
+  id        String   @id @default(uuid())
+  key       String // Consider encryption or hashing
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+}
+
+model Subscription {
+  id        String           @id @default(uuid())
+  userId    String
+  plan      SubscriptionPlan
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+}
+
+model UserSpeechRequest {
+  id           String       @id @default(uuid())
+  userId       String
+  inputText    String
+  inputFormat  InputFormat
+  outputFormat OutputFormat @default(MP3)
+  voice        VoiceType
+  speechSpeed  Float        @default(1.0)
+  pitch        Float        @default(1.0)
+  volume       Float        @default(1.0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relations
+  user         User           @relation(fields: [userId], references: [id])
+  SpeechOutput SpeechOutput[]
+}
+
+model SpeechOutput {
+  id              String   @id @default(uuid())
+  speechRequestId String
+  filePath        String
+  playbackUrl     String
+  createdAt       DateTime @default(now())
+
+  // Relations
+  speechRequest UserSpeechRequest @relation(fields: [speechRequestId], references: [id])
+}
+
+model SystemLog {
+  id        String      @id @default(uuid())
+  message   String
+  severity  LogSeverity
+  createdAt DateTime    @default(now())
+}
+
+enum UserRole {
+  CONTENTCREATOR
+  ADMIN
+  INSTITUTION
+}
+
+enum SubscriptionPlan {
+  FREE
+  BASIC
+  PREMIUM
+}
+
+enum InputFormat {
+  PLAIN_TEXT
+  SSML
+}
+
+enum OutputFormat {
+  MP3
+}
+
+enum VoiceType {
+  FEMALE_EN_US
+}
+
+enum LogSeverity {
+  INFO
+  WARNING
+  ERROR
+}
+
